@@ -13,14 +13,18 @@ from .calendar import build_ics, attach_ics
 def run_once() -> int:
     cfg = load_config()
 
-    mail = fetch_latest_unseen(
-        host=cfg.imap.host,
-        port=cfg.imap.port,
-        username=cfg.imap.username,
-        password=cfg.imap.password,
-        use_ssl=cfg.imap.use_ssl,
-        mailbox=cfg.imap.mailbox,
-    )
+    try:
+        mail = fetch_latest_unseen(
+            host=cfg.imap.host,
+            port=cfg.imap.port,
+            username=cfg.imap.username,
+            password=cfg.imap.password,
+            use_ssl=cfg.imap.use_ssl,
+            mailbox=cfg.imap.mailbox,
+        )
+    except Exception as exc:
+        print(f"IMAP error: {exc}")
+        return 1
 
     if not mail:
         return 0
@@ -34,16 +38,20 @@ def run_once() -> int:
         api_key=cfg.openai.api_key,
     )
 
-    smtp = connect_smtp(
-        host=cfg.smtp.host,
-        port=cfg.smtp.port,
-        username=cfg.smtp.username,
-        password=cfg.smtp.password,
-        from_address=cfg.smtp.from_address,
-        from_name=cfg.smtp.from_name,
-        use_starttls=cfg.smtp.use_starttls,
-        use_ssl=cfg.smtp.use_ssl,
-    )
+    try:
+        smtp = connect_smtp(
+            host=cfg.smtp.host,
+            port=cfg.smtp.port,
+            username=cfg.smtp.username,
+            password=cfg.smtp.password,
+            from_address=cfg.smtp.from_address,
+            from_name=cfg.smtp.from_name,
+            use_starttls=cfg.smtp.use_starttls,
+            use_ssl=cfg.smtp.use_ssl,
+        )
+    except Exception as exc:
+        print(f"SMTP error: {exc}")
+        return 1
     try:
         # Build email
         from email.message import EmailMessage
@@ -57,12 +65,18 @@ def run_once() -> int:
             if cfg.smtp.from_name
             else cfg.smtp.from_address
         )
+        def _sanitize_header_value(value: str) -> str:
+            # Collapse CR/LF and excessive whitespace to a single space
+            return " ".join((value or "").replace("\r", "").splitlines()).strip()
+
         if mail.message_id:
-            msg["In-Reply-To"] = mail.message_id
+            in_reply_to = _sanitize_header_value(mail.message_id)
+            msg["In-Reply-To"] = in_reply_to
             if mail.references:
-                msg["References"] = f"{mail.references} {mail.message_id}"
+                combined_refs = f"{mail.references} {mail.message_id}"
+                msg["References"] = _sanitize_header_value(combined_refs)
             else:
-                msg["References"] = mail.message_id
+                msg["References"] = in_reply_to
 
         if decision.reply_body_html:
             msg.set_content(decision.reply_body_text)

@@ -3,6 +3,7 @@ from __future__ import annotations
 import email
 import imaplib
 import smtplib
+import socket
 from dataclasses import dataclass
 from email.header import decode_header, make_header
 from email.message import EmailMessage
@@ -90,10 +91,16 @@ def fetch_latest_unseen(
     use_ssl: bool = True,
     mailbox: str = "INBOX",
 ) -> Optional[EmailContent]:
-    if use_ssl:
-        M = imaplib.IMAP4_SSL(host, port)
-    else:
-        M = imaplib.IMAP4(host, port)
+    try:
+        if use_ssl:
+            M = imaplib.IMAP4_SSL(host, port)
+        else:
+            M = imaplib.IMAP4(host, port)
+    except (socket.gaierror, OSError) as exc:
+        raise RuntimeError(
+            f"Failed to connect to IMAP server at {host}:{port}. "
+            f"Please verify IMAP_HOST/IMAP_PORT and network connectivity."
+        ) from exc
     try:
         M.login(username, password)
         M.select(mailbox)
@@ -150,10 +157,16 @@ def connect_smtp(
     use_starttls: bool = True,
     use_ssl: bool = False,
 ) -> SMTPConnection:
-    if use_ssl:
-        server = smtplib.SMTP_SSL(host, port)
-    else:
-        server = smtplib.SMTP(host, port)
+    try:
+        if use_ssl:
+            server = smtplib.SMTP_SSL(host, port)
+        else:
+            server = smtplib.SMTP(host, port)
+    except (socket.gaierror, OSError) as exc:
+        raise RuntimeError(
+            f"Failed to connect to SMTP server at {host}:{port}. "
+            f"Please verify SMTP_HOST/SMTP_PORT and network connectivity."
+        ) from exc
     server.ehlo()
     if use_starttls and not use_ssl:
         server.starttls()

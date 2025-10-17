@@ -5,6 +5,7 @@ from email.message import EmailMessage
 from typing import Iterable, Optional
 
 from icalendar import Calendar, Event, vCalAddress, vText
+from uuid import uuid4
 
 from .models import MeetingDetails
 
@@ -16,10 +17,12 @@ def build_ics(meeting: MeetingDetails, organizer_email: str, organizer_name: Opt
     cal.add('method', 'REQUEST')
 
     event = Event()
-    event.add('uid')  # icalendar will generate a UID
+    event.add('uid', str(uuid4()))
     event.add('summary', meeting.title)
 
     # DTSTART and DTEND should be timezone-aware; icalendar handles tzinfo on datetime
+    if meeting.start_datetime is None:
+        raise ValueError("Meeting start_datetime is required to build ICS")
     start_dt: datetime = meeting.start_datetime
     end_dt: datetime = start_dt + timedelta(minutes=meeting.duration_minutes)
     event.add('dtstart', start_dt)
@@ -51,8 +54,8 @@ def build_ics(meeting: MeetingDetails, organizer_email: str, organizer_name: Opt
 def attach_ics(msg: EmailMessage, ics_bytes: bytes, filename: str = 'invite.ics') -> None:
     msg.add_attachment(
         ics_bytes,
-        maintype='application',
-        subtype='ics',
+        maintype='text',
+        subtype='calendar',
         filename=filename,
-        headers={'Content-Class': 'urn:content-classes:calendarmessage'}
+        params={'method': 'REQUEST'}
     )
