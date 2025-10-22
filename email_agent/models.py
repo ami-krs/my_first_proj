@@ -35,4 +35,15 @@ class DraftDecision:
     reply_body_text: str
     reply_body_html: Optional[str]
     needs_meeting: bool
-    meeting: Optional[MeetingDetails] = None
+    meeting: Optional[MeetingDetails]
+
+
+@dataclass
+class ReviewDecision:
+    approved: bool
+    suggested_changes: Optional[str]
+    final_subject: str
+    final_body_text: str
+    final_body_html: Optional[str]
+    final_needs_meeting: bool
+    final_meeting: Optional[MeetingDetails] = None
