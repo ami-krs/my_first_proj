@@ -1,3 +1,6 @@
+## email_io.py
+# This file fetches emails via IMAP, send emails via SMTP, and process email content.
+#
 from __future__ import annotations
 
 import email
