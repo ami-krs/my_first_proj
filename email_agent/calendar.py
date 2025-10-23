@@ -22,8 +22,12 @@ def build_ics(meeting: MeetingDetails, organizer_email: str, organizer_name: Opt
 
     # DTSTART and DTEND should be timezone-aware; icalendar handles tzinfo on datetime
     if meeting.start_datetime is None:
-        raise ValueError("Meeting start_datetime is required to build ICS")
-    start_dt: datetime = meeting.start_datetime
+        # If no specific datetime, use a placeholder that indicates scheduling needed
+        from datetime import datetime, timezone
+        start_dt = datetime.now(timezone.utc).replace(hour=9, minute=0, second=0, microsecond=0)
+    else:
+        start_dt: datetime = meeting.start_datetime
+    
     end_dt: datetime = start_dt + timedelta(minutes=meeting.duration_minutes)
     event.add('dtstart', start_dt)
     event.add('dtend', end_dt)

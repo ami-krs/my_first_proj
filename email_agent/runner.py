@@ -6,7 +6,7 @@ from typing import Optional
 
 from .config import load_config
 from .email_io import fetch_latest_unseen, connect_smtp, send_reply
-from .ai import analyze_and_draft
+from .ai import analyze_and_draft, is_auto_or_spam, classify_email_with_llm
 from .review_ai import review_draft
 from .calendar import build_ics, attach_ics
 
@@ -28,6 +28,13 @@ def run_once() -> int:
         return 1
 
     if not mail:
+        return 0
+    if is_auto_or_spam(email = mail):
+        print("Skipped non-human or promotional email.")
+        return 0
+
+    if not classify_email_with_llm(mail.subject, mail.plain_text):
+        print("Skipped auto or promotional email.")
         return 0
 
     decision = analyze_and_draft(
@@ -111,8 +118,12 @@ def run_once() -> int:
 
         # Attach calendar invite if needed
         if final_needs_meeting and final_meeting:
-            ics = build_ics(final_meeting, cfg.smtp.from_address, cfg.smtp.from_name)
-            attach_ics(msg, ics)
+            try:
+                ics = build_ics(final_meeting, cfg.smtp.from_address, cfg.smtp.from_name)
+                attach_ics(msg, ics)
+            except Exception as e:
+                print(f"Warning: Could not create calendar invite: {e}")
+                # Continue without calendar attachment
 
         smtp.send(msg)
     finally:
