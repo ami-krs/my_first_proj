@@ -11,11 +11,73 @@ from .review_ai import review_draft
 from .calendar import build_ics, attach_ics
 from .router import RouterAgent, RoutingDecision
 from .experts import SchedulingAgent, BusinessAgent, InformationAgent, GeneralAgent
+from .auth_manager import AuthManager, get_user_email_and_credentials
 
 
-def run_once() -> int:
-    """Run the multi-agent email system once"""
+def run_once(
+    sender_email: Optional[str] = None,
+    receiver_email: Optional[str] = None,
+    use_stored: bool = False
+) -> int:
+    """
+    Run the multi-agent email system once
+    
+    Args:
+        sender_email: Email to send from (if not provided, user will be prompted)
+        receiver_email: Email to send to (if not provided, will reply to received email)
+        use_stored: Use stored credentials without prompting
+    """
+    # Step 0: Get user credentials
+    if not sender_email:
+        user_config = get_user_email_and_credentials()
+        if not user_config:
+            print("❌ Authentication failed")
+            return 1
+        
+        sender_email = user_config['email_account']
+        credentials = user_config['credentials']
+        
+        # Update config with user credentials
+        # Note: This would need to be passed to fetch_latest_unseen
+    else:
+        # Use provided email and get stored credentials
+        auth_manager = AuthManager(sender_email)
+        stored_creds = auth_manager.get_credentials()
+        
+        if not stored_creds:
+            print(f"❌ No stored credentials for {sender_email}")
+            print("Please run setup first")
+            return 1
+        
+        credentials = stored_creds
+    
     cfg = load_config()
+    
+    # Override config with user credentials
+    class UserConfig:
+        def __init__(self, orig_cfg, creds):
+            self.imap = type('IMAP', (), {
+                'host': creds.imap_host,
+                'port': orig_cfg.imap.port,
+                'username': creds.username,
+                'password': creds.imap_password,
+                'use_ssl': orig_cfg.imap.use_ssl,
+                'mailbox': orig_cfg.imap.mailbox,
+            })()
+            self.smtp = type('SMTP', (), {
+                'host': creds.smtp_host,
+                'port': orig_cfg.smtp.port,
+                'username': creds.username,
+                'password': creds.smtp_password,
+                'from_address': creds.username,
+                'from_name': orig_cfg.smtp.from_name,
+                'use_starttls': orig_cfg.smtp.use_starttls,
+                'use_ssl': orig_cfg.smtp.use_ssl,
+            })()
+            self.openai = orig_cfg.openai
+            self.agent = orig_cfg.agent
+    
+    cfg = UserConfig(cfg, credentials)
 
     # Step 1: Fetch email
     try:
@@ -180,9 +242,79 @@ def run_once() -> int:
 
 
 def main(argv: Optional[list[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description="Multi-Agent AI Email System - one-shot run")
-    _ = parser.parse_args(argv)
-    return run_once()
+    parser = argparse.ArgumentParser(
+        description="Multi-Agent AI Email System with Secure Authentication",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Interactive mode (prompts for email and credentials)
+  python -m email_agent.runner
+  
+  # Use specific email with stored credentials
+  python -m email_agent.runner --email user@example.com
+  
+  # Setup credentials for an email
+  python -m email_agent.runner --setup user@example.com
+  
+  # Delete stored credentials
+  python -m email_agent.runner --delete user@example.com
+        """
+    )
+    
+    parser.add_argument(
+        '--email', '-e',
+        type=str,
+        help='Email address to use (will use stored credentials)'
+    )
+    parser.add_argument(
+        '--receiver', '-r',
+        type=str,
+        help='Specific receiver email (default: replies to received email)'
+    )
+    parser.add_argument(
+        '--setup', '-s',
+        type=str,
+        help='Setup credentials for an email address'
+    )
+    parser.add_argument(
+        '--delete', '-d',
+        type=str,
+        help='Delete stored credentials for an email address'
+    )
+    parser.add_argument(
+        '--use-stored',
+        action='store_true',
+        help='Use stored credentials without prompting'
+    )
+    
+    args = parser.parse_args(argv)
+    
+    # Handle setup
+    if args.setup:
+        from .auth_manager import AuthManager
+        auth_mgr = AuthManager(args.setup)
+        credentials = AuthManager.interactive_setup(args.setup)
+        if credentials:
+            auth_mgr.store_credentials(credentials, force_update=True)
+            print(f"✅ Credentials saved for {args.setup}")
+        return 0
+    
+    # Handle delete
+    if args.delete:
+        from .auth_manager import AuthManager
+        auth_mgr = AuthManager(args.delete)
+        if auth_mgr.delete_credentials():
+            print(f"✅ Deleted credentials for {args.delete}")
+        else:
+            print(f"❌ No credentials found for {args.delete}")
+        return 0
+    
+    # Run normally
+    return run_once(
+        sender_email=args.email,
+        receiver_email=args.receiver,
+        use_stored=args.use_stored
+    )
 
 
 if __name__ == "__main__":
