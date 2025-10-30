@@ -241,29 +241,42 @@ def _make_client(api_key: Optional[str] = None) -> OpenAI:
         raise RuntimeError("OPENAI_API_KEY not configured")
     return OpenAI(api_key=key)
 
+# Global whitelist for trusted senders (lowercase)
+WHITELIST = [
+    "@gmail.com",  # Example domain: allow any real Gmail human
+    "@outlook.com",
+    # Add more trusted domains or exact emails as needed, eg: "team@company.com"
+]
+
 def is_auto_or_spam(email):
     sender = email.from_address.lower()
     subject = email.subject.lower()
     body_preview = email.plain_text.lower()
 
+    # Always allow if on whitelist
+    if any(allowed in sender for allowed in WHITELIST):
+        print(f"[WHITELIST ALLOW] {sender} {subject}")
+        return False
+
     # Rule 1: no-reply senders
     if any(keyword in sender for keyword in ["no-reply", "noreply", "do-not-reply"]):
+        print(f"[SPAM SKIP] no-reply sender: {sender}, subject: {subject}")
         return True
 
     # Rule 2: marketing domains
     if any(domain in sender for domain in ["mailchimp", "hubspot", "substack", "medium.com", "sendgrid"]):
+        print(f"[SPAM SKIP] marketing domain: {sender}, subject: {subject}")
         return True
 
-    # Rule 3: spam keywords
-    if any(word in subject for word in ["unsubscribe", "offer", "deal", "discount", "newsletter", "promo", "ad:"]):
-        return True
-
-    # Rule 4: system notifications
-    if any(word in subject for word in ["password reset", "verification code", "invoice", "receipt"]):
-        return True
-
-    # Rule 5: out-of-office
-    if "out of office" in subject or "auto-reply" in subject:
+    # Rule 3: spammy subject or system notification, but only skip if sender is not personal
+    spam_words = ["unsubscribe", "offer", "deal", "discount", "newsletter", "promo", "ad:"]
+    sys_words = ["password reset", "verification code", "invoice", "receipt", "auto-reply", "out of office"]
+    if any(word in subject for word in spam_words + sys_words):
+        # If sender looks like a real person (e.g. has a firstname.lastname@gmail.com), allow!
+        if ("@gmail.com" in sender or "@outlook.com" in sender or "@yahoo.com" in sender):
+            print(f"[HUMAN PASS] Possibly spammy subject, but sender looks like a human: {sender} → subject: {subject}")
+            return False
+        print(f"[SPAM SKIP] spam keyword in subject, system word, or out of office: {sender}, subject: {subject}")
         return True
 
     return False
@@ -287,7 +300,14 @@ def classify_email_with_llm(subject, body):
         ]
     )
     label = response.choices[0].message.content.strip().upper()
-    return label == "HUMAN"
+    if label not in ["HUMAN", "AUTOMATED"]:
+        print(f"[LLM WARNING] Unknown label '{label}' for subject '{subject}'. Defaulting to HUMAN.")
+        return True
+    if label == "AUTOMATED":
+        print(f"[LLM CLASSIFIER SKIP] Email classified as AUTOMATED - Subject: {subject}")
+        return False
+    print(f"[LLM PASS] Email classified as HUMAN - Subject: {subject}")
+    return True
 
 SYSTEM_PROMPT_ANALYST = """
 You are an email analysis and information extraction agent.

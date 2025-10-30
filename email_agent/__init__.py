@@ -8,9 +8,12 @@ __all__ = [
     "BusinessAgent",
     "InformationAgent",
     "GeneralAgent",
+    "EmailReporter",
+    "log_email_event",
 ]
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 from .router import RouterAgent, RoutingDecision
 from .experts import SchedulingAgent, BusinessAgent, InformationAgent, GeneralAgent
+from .reporter import EmailReporter, log_email_event

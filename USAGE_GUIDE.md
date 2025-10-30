@@ -193,7 +193,74 @@ Email → Router → Expert Agent → Review → Send
 
 ## 🎯 Advanced Usage
 
-### Cron Job Integration
+## 🎧 Real-time Email Listener (Event-Driven)
+
+Instead of polling with cron jobs, you can run a **real-time listener** that reacts instantly to incoming emails:
+
+### Start Real-time Listener
+
+```bash
+# Listen for emails on specific account with reporting
+python -m email_agent.listener --email your_email@example.com --report-email ami.krs@gmail.com
+
+# Or use the convenience script
+./start_email_agent.sh your_email@example.com ami.krs@gmail.com
+```
+
+### Features
+
+- **Real-time Processing**: Emails are processed immediately when they arrive
+- **Automatic Reporting**: Detailed reports sent every 15 minutes to specified email
+- **Background Operation**: Runs continuously in the background
+- **Graceful Shutdown**: Handles Ctrl+C and system signals properly
+
+### Report Details
+
+Reports include:
+- **Email Statistics**: Total emails, processed, skipped, errors
+- **Email Details**: Time, sender, subject, action taken, reason
+- **Agent Information**: Which agent processed the email, confidence score
+- **Processing Time**: How long each email took to process
+
+### Report Email Configuration
+
+Reports are automatically sent every 15 minutes to:
+- Default: `ami.krs@gmail.com`
+- Custom: Specify with `--report-email` parameter
+
+### How It Works
+
+1. **Listens continuously** for new emails (event-driven)
+2. **Instant response** - processes emails as they arrive
+3. **No polling delay** - reacts immediately when email arrives
+4. **Automatic reporting** - sends detailed reports every 15 minutes
+5. **Graceful shutdown** - Press Ctrl+C to stop
+
+### Benefits vs Cron
+
+| Polling (Cron) | Event-Driven (Listener) |
+|----------------|-------------------------|
+| Checks every N minutes | Instant response |
+| Delayed reaction | Real-time processing |
+| Battery/cpu wasteful | Efficient resource usage |
+| May miss rapid emails | Never misses |
+
+### Running in Background
+
+```bash
+# Start in background and log to file
+nohup python -m email_agent.listener --email your@email.com > email_agent.log 2>&1 &
+
+# View logs
+tail -f email_agent.log
+
+# Stop the listener
+pkill -f "email_agent.listener"
+```
+
+### Cron Job Integration (Alternative)
+
+If you prefer scheduled polling:
 
 ```bash
 # Run every 5 minutes
