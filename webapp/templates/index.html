@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Email Agent Control Panel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 24px; }
+    .card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+    .row { display: flex; gap: 16px; flex-wrap: wrap; }
+    label { display: block; margin: 8px 0 4px; font-weight: 600; }
+    input[type=text], input[type=email], select { width: 320px; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; }
+    button { background: #2563eb; color: white; border: 0; border-radius: 6px; padding: 8px 14px; cursor: pointer; }
+    button.secondary { background: #ef4444; }
+    .muted { color: #6b7280; }
+    pre { background: #111827; color: #e5e7eb; padding: 12px; border-radius: 8px; overflow: auto; max-height: 420px; }
+  </style>
+</head>
+<body>
+  <h1>📨 Email Agent Control Panel</h1>
+  <p class="muted">Auth: set env DASH_USER/DASH_PASS to change login. Default admin/admin.</p>
+  <p><a href="/register" style="color: #2563eb; text-decoration: none;">➕ Register New Email Account</a></p>
+
+  <div class="card">
+    <h2>Status</h2>
+    <p>Running: <strong>{{ 'Yes' if status.running else 'No' }}</strong>
+       {% if status.pid %}<span class="muted">(PID {{ status.pid }})</span>{% endif %}</p>
+    <p>Latest log: <strong>{{ status.latest_log or 'None' }}</strong></p>
+  </div>
+
+  <div class="row">
+    <div class="card">
+      <h3>Start Agent</h3>
+      <form method="post" action="/start">
+        <label for="email">Email account</label>
+        {% if accounts and accounts|length > 0 %}
+          <select id="email" name="email">
+            {% for acc in accounts %}
+              <option value="{{ acc }}">{{ acc }}</option>
+            {% endfor %}
+          </select>
+        {% else %}
+          <input id="email" name="email" type="email" placeholder="your_email@example.com" required />
+        {% endif %}
+
+        <label for="report_email">Report email (optional)</label>
+        <input id="report_email" name="report_email" type="email" value="ami.krs@gmail.com" />
+
+        <div style="margin:10px 0;">
+          <label><input type="checkbox" name="enable_reporting" /> Enable 15-min summary reporting</label>
+        </div>
+
+        <button type="submit">Start</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h3>Stop Agent</h3>
+      <form method="post" action="/stop">
+        <button class="secondary" type="submit">Stop</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h3>Actions</h3>
+      <form method="post" action="/test-reply" style="margin-bottom:10px;">
+        <label for="tr_email">Email account (for test reply)</label>
+        {% if accounts and accounts|length > 0 %}
+          <select id="tr_email" name="email">
+            {% for acc in accounts %}
+              <option value="{{ acc }}">{{ acc }}</option>
+            {% endfor %}
+          </select>
+        {% else %}
+          <input id="tr_email" name="email" type="email" placeholder="your_email@example.com" required />
+        {% endif %}
+        <button type="submit">Trigger Test Reply (process 1 unseen)</button>
+      </form>
+
+      <form method="post" action="/test-report">
+        <label for="rp_email">Email account (sender)</label>
+        {% if accounts and accounts|length > 0 %}
+          <select id="rp_email" name="email">
+            {% for acc in accounts %}
+              <option value="{{ acc }}">{{ acc }}</option>
+            {% endfor %}
+          </select>
+        {% else %}
+          <input id="rp_email" name="email" type="email" placeholder="your_email@example.com" required />
+        {% endif %}
+        <label for="rp_to">Report destination</label>
+        <input id="rp_to" name="report_email" type="email" value="ami.krs@gmail.com" />
+        <button type="submit">Send Test Report Now</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Live Logs (tail)</h3>
+    <pre id="logs">Loading logs...</pre>
+  </div>
+
+  <script>
+    async function refreshLogs() {
+      try {
+        const res = await fetch('/logs');
+        const txt = await res.text();
+        document.getElementById('logs').textContent = txt || 'No logs yet.';
+      } catch (e) {
+        document.getElementById('logs').textContent = 'Failed to load logs';
+      }
+    }
+    refreshLogs();
+    setInterval(refreshLogs, 5000);
+  </script>
+</body>
+</html>

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Register Email Account - Email Agent</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 24px; max-width: 600px; }
+    .card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+    label { display: block; margin: 8px 0 4px; font-weight: 600; }
+    input[type=text], input[type=email], input[type=password] { width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; }
+    button { background: #2563eb; color: white; border: 0; border-radius: 6px; padding: 8px 14px; cursor: pointer; margin-top: 12px; }
+    button.secondary { background: #6b7280; }
+    .muted { color: #6b7280; font-size: 14px; }
+    .help-text { color: #6b7280; font-size: 12px; margin-top: 4px; }
+    a { color: #2563eb; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <h1>➕ Register New Email Account</h1>
+  <p class="muted">Store credentials securely using your system keyring. All passwords are encrypted.</p>
+  <p><a href="/">← Back to Dashboard</a></p>
+
+  <div class="card">
+    <form method="post" action="/register">
+      <label for="email">Email Address *</label>
+      <input id="email" name="email" type="email" placeholder="your_email@example.com" required />
+
+      <label for="imap_host">IMAP Host *</label>
+      <input id="imap_host" name="imap_host" type="text" value="imap.gmail.com" required />
+      <p class="help-text">Examples: imap.gmail.com, imap.outlook.com, imap.mail.yahoo.com</p>
+
+      <label for="imap_password">IMAP Password/App Password *</label>
+      <input id="imap_password" name="imap_password" type="password" placeholder="Enter IMAP password or app password" required />
+      <p class="help-text">For Gmail: Use an App Password (Settings → Security → App Passwords)</p>
+
+      <label for="smtp_host">SMTP Host *</label>
+      <input id="smtp_host" name="smtp_host" type="text" value="smtp.gmail.com" required />
+      <p class="help-text">Examples: smtp.gmail.com, smtp.outlook.com, smtp.mail.yahoo.com</p>
+
+      <label for="smtp_password">SMTP Password/App Password *</label>
+      <input id="smtp_password" name="smtp_password" type="password" placeholder="Enter SMTP password or app password" required />
+      <p class="help-text">For Gmail: Use an App Password (Settings → Security → App Passwords)</p>
+
+      <button type="submit">Register Account</button>
+      <a href="/"><button type="button" class="secondary">Cancel</button></a>
+    </form>
+  </div>
+
+  <div class="card">
+    <h3>📝 Help</h3>
+    <p class="muted">
+      <strong>Gmail Users:</strong><br>
+      • Enable 2-Step Verification<br>
+      • Generate App Passwords: Google Account → Security → App Passwords<br>
+      • Use these app passwords (not your regular password) for IMAP and SMTP
+    </p>
+    <p class="muted">
+      <strong>Outlook/Office 365:</strong><br>
+      • Use your regular password or an App Password if 2FA is enabled<br>
+      • IMAP: outlook.office365.com, SMTP: smtp.office365.com
+    </p>
+    <p class="muted">
+      <strong>Security:</strong><br>
+      • All credentials are stored securely in your system keyring (macOS Keychain, Windows Credential Manager, Linux Secret Service)<br>
+      • Passwords are never stored in plain text
+    </p>
+  </div>
+</body>
+</html>
+
